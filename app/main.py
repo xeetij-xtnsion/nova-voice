@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.database import get_db
+from app.database import get_db, Base
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.analytics import ChatAnalytics
 from app.services.embedding import embedding_service
@@ -125,7 +125,11 @@ REALTIME_TOOLS = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: load guidelines from DB."""
+    """Startup: load guidelines from DB, ensure tables exist."""
+    from app.database import engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Database tables verified.")
     logger.info("Loading guidelines from KB...")
     await load_guidelines()
     logger.info("Guidelines loaded. Nova Voice AI ready.")
@@ -252,9 +256,25 @@ class BookAppointmentRequest(BaseModel):
 @app.post("/api/tools/book_appointment")
 async def book_appointment(req: BookAppointmentRequest, db: AsyncSession = Depends(get_db)):
     """Book an appointment and store it in the shared database."""
+    logger.info(
+        f"BOOKING REQUEST: name={req.patient_name} phone={req.phone_number} "
+        f"type={req.appointment_type} practitioner={req.practitioner} "
+        f"date={req.date} time={req.time} session={req.session_id}"
+    )
     try:
-        appt_date = date.fromisoformat(req.date)
-        appt_time = time.fromisoformat(req.time)
+        # Parse date — handle common formats
+        try:
+            appt_date = date.fromisoformat(req.date)
+        except ValueError:
+            from dateutil import parser as dateparser
+            appt_date = dateparser.parse(req.date).date()
+
+        # Parse time — handle HH:MM, HH:MM:SS, and natural formats like "2:00 PM"
+        try:
+            appt_time = time.fromisoformat(req.time)
+        except ValueError:
+            from dateutil import parser as dateparser
+            appt_time = dateparser.parse(req.time).time()
 
         appointment = Appointment(
             patient_name=req.patient_name,
@@ -273,7 +293,7 @@ async def book_appointment(req: BookAppointmentRequest, db: AsyncSession = Depen
 
         logger.info(
             f"APPOINTMENT SAVED: {req.patient_name} | {req.phone_number} | "
-            f"{req.appointment_type} with {req.practitioner} on {req.date} at {req.time}"
+            f"{req.appointment_type} with {req.practitioner} on {appt_date} at {appt_time}"
         )
 
         return {
@@ -291,7 +311,7 @@ async def book_appointment(req: BookAppointmentRequest, db: AsyncSession = Depen
         }
 
     except Exception as e:
-        logger.error(f"Booking error: {e}")
+        logger.error(f"Booking error: {e}", exc_info=True)
         await db.rollback()
         return {
             "result": (
