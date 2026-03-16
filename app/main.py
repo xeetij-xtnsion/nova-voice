@@ -332,11 +332,14 @@ async def kb_status(db: AsyncSession = Depends(get_db)):
         versions = await db.execute(text(
             "SELECT kb_version, COUNT(*) as cnt FROM kb_chunks GROUP BY kb_version ORDER BY kb_version"
         ))
+        guidelines_text = get_guidelines()
         return {
             "total_chunks": r.total,
             "version_match": r.version_match,
             "kb_version_config": settings.kb_version,
             "versions": {str(v.kb_version): v.cnt for v in versions.all()},
+            "guidelines_length": len(guidelines_text),
+            "guidelines_preview": guidelines_text[:3000] if guidelines_text else "(empty)",
         }
     except Exception as e:
         return {"error": str(e)}
