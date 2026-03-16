@@ -2,11 +2,21 @@
 
 from app.config import practitioner_services
 
-# Build practitioner quick-reference for smart routing
+# Build practitioner quick-reference with full details
 _practitioner_lines = []
 for name, info in practitioner_services.items():
-    focus = info.get("areas_of_focus", "")
-    _practitioner_lines.append(f"- {name} ({info['title']}): {focus}")
+    parts = [f"- {name} ({info['title']})"]
+    if info.get("credentials"):
+        parts.append(f"  Credentials: {info['credentials']}")
+    if info.get("registrations"):
+        parts.append(f"  Registrations: {info['registrations']}")
+    if info.get("services"):
+        parts.append(f"  Services: {', '.join(info['services'])}")
+    if info.get("areas_of_focus"):
+        parts.append(f"  Focus areas: {info['areas_of_focus']}")
+    if info.get("certifications"):
+        parts.append(f"  Certifications: {info['certifications']}")
+    _practitioner_lines.append("\n".join(parts))
 PRACTITIONER_REFERENCE = "\n".join(_practitioner_lines)
 
 

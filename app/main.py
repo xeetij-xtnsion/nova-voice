@@ -316,6 +316,29 @@ async def get_clinic_info(req: ClinicInfoRequest):
     }
 
 
+# ── Debug: KB status ─────────────────────────────────────────────
+
+@app.get("/api/debug/kb-status")
+async def kb_status(db: AsyncSession = Depends(get_db)):
+    """Check KB connectivity and chunk count."""
+    from sqlalchemy import text
+    try:
+        row = await db.execute(text(
+            "SELECT COUNT(*) as total, "
+            "COUNT(*) FILTER (WHERE kb_version = :v) as version_match "
+            "FROM kb_chunks"
+        ), {"v": settings.kb_version})
+        r = row.one()
+        return {
+            "total_chunks": r.total,
+            "version_match": r.version_match,
+            "kb_version_config": settings.kb_version,
+            "db_url_prefix": settings.database_url[:40] + "...",
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 # ── Conversation Logging ─────────────────────────────────────────────
 
 class LogConversationRequest(BaseModel):
