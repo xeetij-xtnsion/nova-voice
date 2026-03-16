@@ -373,25 +373,6 @@ async def kb_status(db: AsyncSession = Depends(get_db)):
         return {"error": str(e)}
 
 
-# ── Temporary: cleanup voice data ────────────────────────────────────
-
-@app.post("/api/debug/cleanup-voice-data")
-async def cleanup_voice_data(db: AsyncSession = Depends(get_db)):
-    """One-time cleanup of all voice test data. REMOVE AFTER USE."""
-    from sqlalchemy import text
-    try:
-        r1 = await db.execute(text("DELETE FROM chat_analytics WHERE response_source = 'voice'"))
-        r2 = await db.execute(text("DELETE FROM appointments WHERE notes LIKE '%Voice%'"))
-        await db.commit()
-        return {
-            "status": "ok",
-            "deleted_analytics": r1.rowcount,
-            "deleted_appointments": r2.rowcount,
-        }
-    except Exception as e:
-        await db.rollback()
-        return {"error": str(e)}
-
 
 # ── Conversation Logging ─────────────────────────────────────────────
 
