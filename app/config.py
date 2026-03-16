@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # RAG Parameters
     top_k: int = 8
-    kb_version: int = 2
+    kb_version: int = 1
     similarity_threshold: float = 0.45
 
     # OpenAI Embedding
