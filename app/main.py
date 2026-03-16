@@ -198,7 +198,11 @@ async def search_kb(req: KBSearchRequest, db: AsyncSession = Depends(get_db)):
                     "I don't have specific information about that in our knowledge base. "
                     "You might want to call us at 587-391-5753 or email admin@novaclinic.ca "
                     "for more details."
-                )
+                ),
+                "is_knowledge_gap": True,
+                "max_similarity": result.get("max_similarity", 0),
+                "chunk_count": 0,
+                "confidence": "low",
             }
 
         # Format top chunks into a concise text block
@@ -218,7 +222,11 @@ async def search_kb(req: KBSearchRequest, db: AsyncSession = Depends(get_db)):
                 f"Here is the relevant information from our knowledge base. "
                 f"Summarize this naturally in 1-2 conversational sentences for the caller. "
                 f"Do not read it word for word:\n\n{combined}"
-            )
+            ),
+            "is_knowledge_gap": False,
+            "max_similarity": result.get("max_similarity", 0),
+            "chunk_count": len(result["chunks"]),
+            "confidence": "high",
         }
 
     except Exception as e:

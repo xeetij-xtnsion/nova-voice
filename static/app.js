@@ -318,6 +318,19 @@ async function handleFunctionCall(callId, functionName, argsString) {
         const data = await res.json();
         const resultText = data.result || "No information available.";
 
+        // Log knowledge gaps from KB searches
+        if (functionName === "search_knowledge_base" && data.is_knowledge_gap) {
+            logConversation(
+                args.query,
+                resultText,
+                "knowledge_gap",
+                data.confidence || "low",
+                data.max_similarity || null,
+                data.chunk_count || 0,
+                true
+            );
+        }
+
         // Remove the "looking up..." indicator
         if (indicator && indicator.parentNode) {
             indicator.parentNode.removeChild(indicator);
@@ -371,7 +384,7 @@ function sendDataChannelEvent(event) {
 
 // ── Conversation logging ────────────────────────────────────────────
 
-function logConversation(question, answer, routeTaken = "standard") {
+function logConversation(question, answer, routeTaken = "standard", confidence = "high", maxSimilarity = null, chunkCount = 0, isKnowledgeGap = false) {
     if (!voiceSessionId) return;
 
     fetch("/api/log_conversation", {
@@ -382,7 +395,10 @@ function logConversation(question, answer, routeTaken = "standard") {
             question: question,
             answer: answer,
             route_taken: routeTaken,
-            confidence: "high",
+            confidence: confidence,
+            max_similarity: maxSimilarity,
+            chunk_count: chunkCount,
+            is_knowledge_gap: isKnowledgeGap,
         }),
     }).catch((err) => console.warn("Failed to log conversation:", err));
 }
