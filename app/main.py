@@ -1,6 +1,9 @@
 import httpx
 import logging
+import uuid
+from datetime import datetime, date, time
 from contextlib import asynccontextmanager
+from typing import Optional
 from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -9,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.models.appointment import Appointment, AppointmentStatus
+from app.models.analytics import ChatAnalytics
 from app.services.embedding import embedding_service
 from app.services.retrieval import retrieve_with_confidence
 from app.services.guidelines import load_guidelines, get_guidelines
@@ -73,6 +78,46 @@ REALTIME_TOOLS = [
             "required": ["topic"],
         },
     },
+    {
+        "type": "function",
+        "name": "book_appointment",
+        "description": (
+            "Book an appointment at Nova Clinic. Call this ONLY after you have collected "
+            "all required fields from the caller through conversation: appointment type, "
+            "practitioner preference, desired date, desired time, patient name, and phone number. "
+            "Do NOT call this until all fields are confirmed."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "appointment_type": {
+                    "type": "string",
+                    "description": "Type of appointment, e.g. 'Naturopathic Medicine', 'Acupuncture', 'Massage Therapy', 'IV Therapy', 'Meet and Greet'",
+                },
+                "practitioner": {
+                    "type": "string",
+                    "description": "Preferred practitioner name, or 'no preference'",
+                },
+                "date": {
+                    "type": "string",
+                    "description": "Requested date in YYYY-MM-DD format",
+                },
+                "time": {
+                    "type": "string",
+                    "description": "Requested time in HH:MM format (24-hour)",
+                },
+                "patient_name": {
+                    "type": "string",
+                    "description": "Full name of the patient",
+                },
+                "phone_number": {
+                    "type": "string",
+                    "description": "Patient's phone number",
+                },
+            },
+            "required": ["appointment_type", "practitioner", "date", "time", "patient_name", "phone_number"],
+        },
+    },
 ]
 
 
@@ -96,6 +141,7 @@ app = FastAPI(title="Nova Voice AI", lifespan=lifespan)
 async def create_session():
     """Create an ephemeral Realtime API session and return the client secret."""
     instructions = VOICE_SYSTEM_PROMPT + get_guidelines()
+    voice_session_id = f"voice-{uuid.uuid4().hex[:16]}"
 
     async with httpx.AsyncClient() as client:
         response = await client.post(
@@ -114,9 +160,9 @@ async def create_session():
                 },
                 "turn_detection": {
                     "type": "server_vad",
-                    "threshold": 0.5,
+                    "threshold": 0.6,
                     "prefix_padding_ms": 300,
-                    "silence_duration_ms": 500,
+                    "silence_duration_ms": 700,
                 },
             },
             timeout=10.0,
@@ -127,7 +173,8 @@ async def create_session():
         return {"error": "Failed to create session", "detail": response.text}
 
     data = response.json()
-    logger.info(f"Created realtime session: {data.get('id', 'unknown')}")
+    data["voice_session_id"] = voice_session_id
+    logger.info(f"Created realtime session: {data.get('id', 'unknown')} (voice: {voice_session_id})")
     return data
 
 
@@ -184,6 +231,68 @@ async def search_kb(req: KBSearchRequest, db: AsyncSession = Depends(get_db)):
         }
 
 
+class BookAppointmentRequest(BaseModel):
+    appointment_type: str
+    practitioner: str
+    date: str
+    time: str
+    patient_name: str
+    phone_number: str
+    session_id: Optional[str] = None
+
+
+@app.post("/api/tools/book_appointment")
+async def book_appointment(req: BookAppointmentRequest, db: AsyncSession = Depends(get_db)):
+    """Book an appointment and store it in the shared database."""
+    try:
+        appt_date = date.fromisoformat(req.date)
+        appt_time = time.fromisoformat(req.time)
+
+        appointment = Appointment(
+            patient_name=req.patient_name,
+            phone=req.phone_number,
+            service=req.appointment_type,
+            practitioner=req.practitioner if req.practitioner.lower() != "no preference" else None,
+            delivery_mode="In-person",
+            appointment_date=appt_date,
+            appointment_time=appt_time,
+            status=AppointmentStatus.pending,
+            session_id=req.session_id,
+            notes="Booked via Nova Voice AI",
+        )
+        db.add(appointment)
+        await db.commit()
+
+        logger.info(
+            f"APPOINTMENT SAVED: {req.patient_name} | {req.phone_number} | "
+            f"{req.appointment_type} with {req.practitioner} on {req.date} at {req.time}"
+        )
+
+        return {
+            "result": (
+                f"Appointment confirmed! Here are the details to read back to the caller:\n"
+                f"- Type: {req.appointment_type}\n"
+                f"- Practitioner: {req.practitioner}\n"
+                f"- Date: {req.date}\n"
+                f"- Time: {req.time}\n"
+                f"- Patient: {req.patient_name}\n"
+                f"- Phone: {req.phone_number}\n\n"
+                f"Summarize the booking naturally in 1-2 sentences. "
+                f"Let them know we'll send a confirmation to their phone number."
+            )
+        }
+
+    except Exception as e:
+        logger.error(f"Booking error: {e}")
+        await db.rollback()
+        return {
+            "result": (
+                "I'm sorry, there was a problem saving the appointment. "
+                "Please try again or call us directly at 587-391-5753."
+            )
+        }
+
+
 class ClinicInfoRequest(BaseModel):
     topic: str
 
@@ -205,6 +314,44 @@ async def get_clinic_info(req: ClinicInfoRequest):
             f"Only share more if the caller asks:\n\n{detail}"
         )
     }
+
+
+# ── Conversation Logging ─────────────────────────────────────────────
+
+class LogConversationRequest(BaseModel):
+    session_id: str
+    question: str
+    answer: str
+    route_taken: str = "standard"
+    confidence: str = "high"
+    max_similarity: Optional[float] = None
+    chunk_count: int = 0
+    is_knowledge_gap: bool = False
+
+
+@app.post("/api/log_conversation")
+async def log_conversation(req: LogConversationRequest, db: AsyncSession = Depends(get_db)):
+    """Log a voice conversation turn to the shared analytics table."""
+    try:
+        entry = ChatAnalytics(
+            session_id=req.session_id,
+            question=req.question,
+            answer=req.answer,
+            response_source="voice",
+            route_taken=req.route_taken,
+            confidence=req.confidence,
+            max_similarity=req.max_similarity,
+            chunk_count=req.chunk_count,
+            is_knowledge_gap=req.is_knowledge_gap,
+            sentiment="neutral",
+        )
+        db.add(entry)
+        await db.commit()
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Conversation log error: {e}")
+        await db.rollback()
+        return {"status": "error"}
 
 
 # ── Static Files ─────────────────────────────────────────────────────

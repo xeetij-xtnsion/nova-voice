@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # OpenAI Realtime API
     openai_realtime_model: str = "gpt-4o-realtime-preview-2025-06-03"
-    realtime_voice: str = "sage"
+    realtime_voice: str = "coral"
 
     # Clinic services (for known topic responses)
     clinic_services: list = [

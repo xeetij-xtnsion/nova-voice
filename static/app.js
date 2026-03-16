@@ -6,11 +6,13 @@
  * 2. Establish WebRTC connection with OpenAI
  * 3. Handle voice I/O via audio tracks
  * 4. Relay function calls to our server via data channel
+ * 5. Log conversation turns to shared analytics DB
  */
 
 let peerConnection = null;
 let dataChannel = null;
 let audioElement = null;
+let voiceSessionId = null;
 
 // ── UI helpers ──────────────────────────────────────────────────────
 
@@ -73,6 +75,9 @@ function addToolIndicator(toolName) {
 let currentAssistantContent = null;
 let currentAssistantText = "";
 
+// Track the last user transcript for conversation logging
+let lastUserTranscript = "";
+
 // ── Start conversation ──────────────────────────────────────────────
 
 async function startConversation() {
@@ -89,6 +94,7 @@ async function startConversation() {
         }
 
         const ephemeralKey = sessionData.client_secret.value;
+        voiceSessionId = sessionData.voice_session_id;
 
         // 2. Create WebRTC peer connection
         peerConnection = new RTCPeerConnection();
@@ -101,7 +107,13 @@ async function startConversation() {
         };
 
         // 4. Get user microphone and add to connection
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+            },
+        });
         stream.getTracks().forEach((track) => {
             peerConnection.addTrack(track, stream);
         });
@@ -169,6 +181,8 @@ function endConversation() {
     }
     currentAssistantContent = null;
     currentAssistantText = "";
+    lastUserTranscript = "";
+    voiceSessionId = null;
     setStatus("", "Disconnected");
     showStartBtn();
     document.getElementById("startBtn").disabled = false;
@@ -186,7 +200,9 @@ function handleDataChannelMessage(event) {
         // User's speech was transcribed
         case "conversation.item.input_audio_transcription.completed":
             if (msg.transcript && msg.transcript.trim()) {
-                addMessage("user", msg.transcript.trim());
+                const text = msg.transcript.trim();
+                addMessage("user", text);
+                lastUserTranscript = text;
             }
             break;
 
@@ -209,8 +225,11 @@ function handleDataChannelMessage(event) {
             }
             break;
 
-        // Assistant finished speaking — finalize the message
+        // Assistant finished speaking — finalize and log
         case "response.audio_transcript.done":
+            if (lastUserTranscript && currentAssistantText) {
+                logConversation(lastUserTranscript, currentAssistantText);
+            }
             currentAssistantContent = null;
             currentAssistantText = "";
             break;
@@ -273,6 +292,17 @@ async function handleFunctionCall(callId, functionName, argsString) {
         } else if (functionName === "get_clinic_info") {
             endpoint = "/api/tools/get_clinic_info";
             body = { topic: args.topic };
+        } else if (functionName === "book_appointment") {
+            endpoint = "/api/tools/book_appointment";
+            body = {
+                appointment_type: args.appointment_type,
+                practitioner: args.practitioner,
+                date: args.date,
+                time: args.time,
+                patient_name: args.patient_name,
+                phone_number: args.phone_number,
+                session_id: voiceSessionId,
+            };
         } else {
             console.warn("Unknown function:", functionName);
             return;
@@ -337,4 +367,22 @@ function sendDataChannelEvent(event) {
     } else {
         console.warn("Data channel not open, cannot send event:", event.type);
     }
+}
+
+// ── Conversation logging ────────────────────────────────────────────
+
+function logConversation(question, answer, routeTaken = "standard") {
+    if (!voiceSessionId) return;
+
+    fetch("/api/log_conversation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            session_id: voiceSessionId,
+            question: question,
+            answer: answer,
+            route_taken: routeTaken,
+            confidence: "high",
+        }),
+    }).catch((err) => console.warn("Failed to log conversation:", err));
 }
