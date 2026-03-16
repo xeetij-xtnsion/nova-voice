@@ -47,34 +47,17 @@
             gap: 20px;
         }
 
-        /* ── Header ──────────────────────────── */
-        .header {
+        /* ── Card Logo ────────────────────────── */
+        .card-logo {
             text-align: center;
-            padding: 8px 0;
+            padding: 24px 32px 16px;
+            border-bottom: 1px solid var(--gray-200);
         }
 
-        .header img {
-            width: 64px;
-            height: 64px;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            margin-bottom: 12px;
-        }
-
-        .header h1 {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--white);
-            letter-spacing: -0.5px;
-        }
-
-        .header p {
-            font-size: 13px;
-            color: rgba(255,255,255,0.7);
-            font-weight: 500;
-            margin-top: 4px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
+        .card-logo img {
+            height: 44px;
+            width: auto;
+            object-fit: contain;
         }
 
         /* ── Main Card ───────────────────────── */
@@ -102,6 +85,32 @@
             color: var(--gray-500);
         }
 
+        .btn-refresh {
+            margin-left: auto;
+            width: 32px;
+            height: 32px;
+            border: 1.5px solid var(--gray-200);
+            border-radius: 8px;
+            background: var(--white);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray-400);
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .btn-refresh:hover {
+            border-color: var(--teal);
+            color: var(--teal);
+            background: rgba(42,157,143,0.04);
+        }
+
+        .btn-refresh:active svg {
+            animation: spin 0.5s ease;
+        }
+
         .status-dot {
             width: 9px;
             height: 9px;
@@ -127,57 +136,143 @@
             align-items: center;
             justify-content: center;
             padding: 32px 24px;
-            gap: 24px;
+            gap: 20px;
         }
 
-        .voice-ring {
-            width: 120px;
-            height: 120px;
+
+        .voice-orb-wrap {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Outer rings */
+        .orb-ring {
+            position: absolute;
             border-radius: 50%;
+            border: 1.5px solid transparent;
+            transition: all 0.4s ease;
+        }
+
+        .orb-ring-1 { inset: -4px; }
+        .orb-ring-2 { inset: -14px; }
+        .orb-ring-3 { inset: -24px; }
+
+        /* Core orb */
+        .voice-orb {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gray-100), var(--gray-200));
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            background: linear-gradient(135deg, var(--gray-100), var(--gray-50));
+            z-index: 1;
             transition: all 0.4s ease;
-        }
-
-        .voice-ring.active {
-            background: linear-gradient(135deg, rgba(42,157,143,0.1), rgba(31,122,111,0.05));
-        }
-
-        .voice-ring.active::before {
-            content: '';
-            position: absolute;
-            inset: -6px;
-            border-radius: 50%;
-            border: 2.5px solid var(--teal);
-            animation: ring-pulse 2s ease-in-out infinite;
-        }
-
-        .voice-ring.active::after {
-            content: '';
-            position: absolute;
-            inset: -16px;
-            border-radius: 50%;
-            border: 1.5px solid rgba(42,157,143,0.3);
-            animation: ring-pulse 2s ease-in-out infinite 0.5s;
-        }
-
-        @keyframes ring-pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.08); opacity: 0.4; }
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
         }
 
         .voice-icon {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             color: var(--gray-400);
-            transition: color 0.3s;
+            transition: all 0.3s;
         }
 
-        .voice-ring.active .voice-icon {
-            color: var(--teal);
+        /* ── Idle (off) ───────────────────────── */
+        .voice-orb-wrap.idle .voice-orb {
+            background: linear-gradient(135deg, var(--gray-100), var(--gray-200));
+        }
+
+        /* ── Ready (connected, subtle breathing) ── */
+        .voice-orb-wrap.ready .voice-orb {
+            background: linear-gradient(135deg, rgba(42,157,143,0.06), rgba(42,157,143,0.03));
+            box-shadow: 0 0 24px rgba(42,157,143,0.08);
+            animation: orb-breathe 3s ease-in-out infinite;
+        }
+
+        .voice-orb-wrap.ready .voice-icon { color: var(--teal); opacity: 0.6; }
+
+        .voice-orb-wrap.ready .orb-ring-1 {
+            border-color: rgba(42,157,143,0.12);
+        }
+
+        @keyframes orb-breathe {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 24px rgba(42,157,143,0.08); }
+            50% { transform: scale(1.02); box-shadow: 0 0 32px rgba(42,157,143,0.12); }
+        }
+
+        /* ── Listening (user speaking — active glow) ── */
+        .voice-orb-wrap.listening .voice-orb {
+            background: linear-gradient(135deg, rgba(42,157,143,0.18), rgba(42,157,143,0.1));
+            box-shadow: 0 0 50px rgba(42,157,143,0.25);
+            animation: orb-glow 0.6s ease-in-out infinite alternate;
+        }
+
+        .voice-orb-wrap.listening .voice-icon { color: var(--teal); }
+
+        .voice-orb-wrap.listening .orb-ring-1 {
+            border-color: rgba(42,157,143,0.6);
+            animation: ring-glow 0.8s ease-in-out infinite alternate;
+        }
+
+        .voice-orb-wrap.listening .orb-ring-2 {
+            border-color: rgba(42,157,143,0.3);
+            animation: ring-glow 0.8s ease-in-out infinite alternate 0.15s;
+        }
+
+        .voice-orb-wrap.listening .orb-ring-3 {
+            border-color: rgba(42,157,143,0.12);
+            animation: ring-glow 0.8s ease-in-out infinite alternate 0.3s;
+        }
+
+        @keyframes orb-glow {
+            0% { transform: scale(1); box-shadow: 0 0 40px rgba(42,157,143,0.2); }
+            100% { transform: scale(1.06); box-shadow: 0 0 60px rgba(42,157,143,0.35); }
+        }
+
+        @keyframes ring-glow {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(1.05); opacity: 1; }
+        }
+
+        /* ── Speaking (Nova responding — wave radiating out) ── */
+        .voice-orb-wrap.speaking .voice-orb {
+            background: linear-gradient(135deg, rgba(26,75,110,0.18), rgba(42,157,143,0.12));
+            box-shadow: 0 0 50px rgba(26,75,110,0.2);
+            animation: orb-pulse 1s ease-in-out infinite;
+        }
+
+        .voice-orb-wrap.speaking .voice-icon { color: var(--navy); }
+
+        .voice-orb-wrap.speaking .orb-ring-1 {
+            border-color: rgba(26,75,110,0.45);
+            animation: ring-wave 1.4s ease-out infinite;
+        }
+
+        .voice-orb-wrap.speaking .orb-ring-2 {
+            border-color: rgba(26,75,110,0.25);
+            animation: ring-wave 1.4s ease-out infinite 0.25s;
+        }
+
+        .voice-orb-wrap.speaking .orb-ring-3 {
+            border-color: rgba(26,75,110,0.1);
+            animation: ring-wave 1.4s ease-out infinite 0.5s;
+        }
+
+        @keyframes orb-pulse {
+            0%, 100% { transform: scale(1); }
+            40% { transform: scale(1.05); }
+            70% { transform: scale(0.98); }
+        }
+
+        @keyframes ring-wave {
+            0% { transform: scale(0.97); opacity: 1; }
+            100% { transform: scale(1.12); opacity: 0; }
         }
 
         /* ── Buttons ─────────────────────────── */
@@ -353,26 +448,34 @@
 </head>
 <body>
     <div class="app-container">
-        <div class="header">
-            <img src="/static/logo.webp" alt="Nova Clinic">
-            <h1>Nova Voice AI</h1>
-            <p>Nova Naturopathic Integrative Clinic</p>
-        </div>
-
         <div class="main-card">
+            <div class="card-logo">
+                <img src="/static/logo.webp" alt="Nova Naturopathic Integrative Clinic">
+            </div>
             <div class="status-bar">
                 <div class="status-dot" id="statusDot"></div>
                 <span id="statusText">Ready to connect</span>
+                <button class="btn-refresh" onclick="location.reload()" title="Refresh">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                </button>
             </div>
 
             <div class="voice-area">
-                <div class="voice-ring" id="voiceRing">
-                    <svg class="voice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        <line x1="12" y1="19" x2="12" y2="23"/>
-                        <line x1="8" y1="23" x2="16" y2="23"/>
-                    </svg>
+                <div class="voice-orb-wrap idle" id="voiceOrb">
+                    <div class="orb-ring orb-ring-3"></div>
+                    <div class="orb-ring orb-ring-2"></div>
+                    <div class="orb-ring orb-ring-1"></div>
+                    <div class="voice-orb">
+                        <svg class="voice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                    </div>
                 </div>
 
                 <div class="controls">
@@ -399,21 +502,58 @@
         </div>
 
         <div class="footer">
-            Powered by Nova Voice AI &middot; <a href="tel:5873915753">587-391-5753</a>
+            Powered by <a href="https://xtnsion.ai" target="_blank">Xtnsion.AI</a>
         </div>
     </div>
 
     <script src="/static/app.js"></script>
     <script>
-        // Voice ring animation
+        const orb = document.getElementById('voiceOrb');
+        let speakingTimeout = null;
+
+        function setOrbState(state) {
+            orb.className = 'voice-orb-wrap ' + state;
+        }
+
+        // Hook into data channel messages for voice state
+        const origHandler = handleDataChannelMessage;
+        handleDataChannelMessage = function(event) {
+            const msg = JSON.parse(event.data);
+
+            // Nova is speaking
+            if (msg.type === 'response.audio_transcript.delta') {
+                if (speakingTimeout) clearTimeout(speakingTimeout);
+                setOrbState('speaking');
+            }
+
+            // Nova done speaking — back to ready
+            if (msg.type === 'response.audio_transcript.done') {
+                speakingTimeout = setTimeout(() => setOrbState('ready'), 400);
+            }
+
+            // User started talking
+            if (msg.type === 'input_audio_buffer.speech_started') {
+                if (speakingTimeout) clearTimeout(speakingTimeout);
+                setOrbState('listening');
+            }
+
+            // User stopped talking — brief glow then back to ready
+            if (msg.type === 'input_audio_buffer.speech_stopped') {
+                speakingTimeout = setTimeout(() => setOrbState('ready'), 600);
+            }
+
+            // Pass to original handler
+            origHandler(event);
+        };
+
+        // Hook into setStatus for connection state
         const origSetStatus = setStatus;
         setStatus = function(state, text) {
             origSetStatus(state, text);
-            const ring = document.getElementById('voiceRing');
             if (state === 'connected') {
-                ring.classList.add('active');
+                setOrbState('ready');
             } else {
-                ring.classList.remove('active');
+                setOrbState('idle');
             }
         };
 
