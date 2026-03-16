@@ -4,192 +4,431 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nova Voice AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --teal: #2a9d8f;
+            --teal-dark: #1f7a6f;
+            --teal-light: #40b4a6;
+            --navy: #1a4b6e;
+            --navy-dark: #0f3552;
+            --white: #ffffff;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --green: #22c55e;
+            --red: #ef4444;
+            --amber: #f59e0b;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8f7f4;
-            color: #2d2d2d;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f3552 0%, #1a4b6e 40%, #1f7a6f 70%, #2a9d8f 100%);
+            background-attachment: fixed;
+            color: #334155;
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
             align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
 
-        header {
+        .app-container {
             width: 100%;
-            background: #1a5c3a;
-            color: white;
-            padding: 1.2rem 2rem;
-            text-align: center;
-        }
-
-        header h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-        }
-
-        header p {
-            font-size: 0.85rem;
-            opacity: 0.85;
-            margin-top: 0.3rem;
-        }
-
-        .container {
-            max-width: 640px;
-            width: 100%;
-            padding: 2rem 1.5rem;
-            flex: 1;
+            max-width: 480px;
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 20px;
         }
 
+        /* ── Header ──────────────────────────── */
+        .header {
+            text-align: center;
+            padding: 8px 0;
+        }
+
+        .header img {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            margin-bottom: 12px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--white);
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: rgba(255,255,255,0.7);
+            font-weight: 500;
+            margin-top: 4px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* ── Main Card ───────────────────────── */
+        .main-card {
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 24px;
+            box-shadow: 0 25px 60px -15px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Status Bar ──────────────────────── */
         .status-bar {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            color: #666;
+            gap: 8px;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--gray-200);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-500);
         }
 
         .status-dot {
-            width: 10px;
-            height: 10px;
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
-            background: #ccc;
+            background: var(--gray-300);
             transition: background 0.3s;
+            flex-shrink: 0;
         }
 
-        .status-dot.connected { background: #2ecc71; }
-        .status-dot.connecting { background: #f39c12; animation: pulse 1s infinite; }
-        .status-dot.error { background: #e74c3c; }
+        .status-dot.connected { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.4); }
+        .status-dot.connecting { background: var(--amber); animation: pulse 1.2s infinite; }
+        .status-dot.error { background: var(--red); }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
+            50% { opacity: 0.3; }
         }
 
-        .controls {
+        /* ── Voice Visualizer ────────────────── */
+        .voice-area {
             display: flex;
+            flex-direction: column;
+            align-items: center;
             justify-content: center;
+            padding: 32px 24px;
+            gap: 24px;
         }
 
+        .voice-ring {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: linear-gradient(135deg, var(--gray-100), var(--gray-50));
+            transition: all 0.4s ease;
+        }
+
+        .voice-ring.active {
+            background: linear-gradient(135deg, rgba(42,157,143,0.1), rgba(31,122,111,0.05));
+        }
+
+        .voice-ring.active::before {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            border: 2.5px solid var(--teal);
+            animation: ring-pulse 2s ease-in-out infinite;
+        }
+
+        .voice-ring.active::after {
+            content: '';
+            position: absolute;
+            inset: -16px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(42,157,143,0.3);
+            animation: ring-pulse 2s ease-in-out infinite 0.5s;
+        }
+
+        @keyframes ring-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.08); opacity: 0.4; }
+        }
+
+        .voice-icon {
+            width: 40px;
+            height: 40px;
+            color: var(--gray-400);
+            transition: color 0.3s;
+        }
+
+        .voice-ring.active .voice-icon {
+            color: var(--teal);
+        }
+
+        /* ── Buttons ─────────────────────────── */
         .btn {
-            padding: 1rem 2.5rem;
-            font-size: 1.1rem;
+            padding: 14px 36px;
+            font-size: 14px;
             font-weight: 600;
+            font-family: 'Inter', sans-serif;
             border: none;
-            border-radius: 50px;
+            border-radius: 999px;
             cursor: pointer;
             transition: all 0.2s;
+            letter-spacing: -0.1px;
         }
 
         .btn-start {
-            background: #1a5c3a;
-            color: white;
+            background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+            color: var(--white);
+            box-shadow: 0 4px 16px rgba(42,157,143,0.3);
         }
 
-        .btn-start:hover { background: #14472d; }
+        .btn-start:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(42,157,143,0.4);
+        }
 
         .btn-end {
-            background: #c0392b;
-            color: white;
+            background: linear-gradient(135deg, var(--red), #dc2626);
+            color: var(--white);
+            box-shadow: 0 4px 16px rgba(239,68,68,0.3);
         }
 
-        .btn-end:hover { background: #a33025; }
+        .btn-end:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(239,68,68,0.4);
+        }
 
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ── Transcript ──────────────────────── */
+        .transcript-section {
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .transcript-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 24px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .transcript-header h3 {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--gray-400);
+        }
+
+        .transcript-toggle {
+            font-size: 11px;
+            color: var(--teal);
+            font-weight: 600;
         }
 
         .transcript {
-            flex: 1;
-            min-height: 300px;
-            max-height: 500px;
+            max-height: 360px;
             overflow-y: auto;
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            padding: 0 24px 20px 24px;
+            scroll-behavior: smooth;
         }
 
+        .transcript::-webkit-scrollbar { width: 4px; }
+        .transcript::-webkit-scrollbar-track { background: transparent; }
+        .transcript::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 4px; }
+
         .transcript-empty {
-            color: #999;
+            color: var(--gray-400);
             text-align: center;
-            padding: 3rem 1rem;
-            font-size: 0.95rem;
+            padding: 24px 16px;
+            font-size: 13px;
+            line-height: 1.6;
         }
 
         .message {
-            margin-bottom: 1rem;
-            padding: 0.8rem 1rem;
-            border-radius: 10px;
-            max-width: 85%;
-            font-size: 0.95rem;
-            line-height: 1.5;
+            margin-bottom: 12px;
+            padding: 12px 16px;
+            border-radius: 16px;
+            max-width: 88%;
+            font-size: 13.5px;
+            line-height: 1.6;
+            word-wrap: break-word;
         }
 
         .message.user {
-            background: #e8f5e9;
+            background: linear-gradient(135deg, var(--navy), var(--navy-dark));
+            color: var(--white);
             margin-left: auto;
-            text-align: right;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 2px 8px rgba(26,75,110,0.2);
         }
 
         .message.assistant {
-            background: #f0f0f0;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-bottom-left-radius: 4px;
         }
 
         .message .label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #888;
-            margin-bottom: 0.3rem;
+            font-size: 10px;
+            font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            opacity: 0.6;
         }
 
-        .message.user .label { color: #1a5c3a; }
+        .message.user .label { color: rgba(255,255,255,0.7); }
+        .message.assistant .label { color: var(--teal); opacity: 1; }
 
         .tool-indicator {
-            font-size: 0.8rem;
-            color: #888;
+            font-size: 12px;
+            color: var(--gray-400);
             font-style: italic;
-            margin-bottom: 0.5rem;
-            padding-left: 0.5rem;
+            margin-bottom: 8px;
+            padding-left: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tool-indicator::before {
+            content: '';
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--gray-300);
+            border-top-color: var(--teal);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ── Footer ──────────────────────────── */
+        .footer {
+            text-align: center;
+            font-size: 11px;
+            color: rgba(255,255,255,0.45);
+            font-weight: 500;
+        }
+
+        .footer a {
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+        }
+
+        /* ── Responsive ──────────────────────── */
+        @media (max-width: 520px) {
+            body { padding: 12px; }
+            .app-container { max-width: 100%; }
+            .voice-area { padding: 24px 16px; }
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1>Nova Voice AI</h1>
-        <p>Nova Naturopathic Integrative Clinic</p>
-    </header>
-
-    <div class="container">
-        <div class="status-bar">
-            <div class="status-dot" id="statusDot"></div>
-            <span id="statusText">Ready</span>
+    <div class="app-container">
+        <div class="header">
+            <img src="/static/logo.webp" alt="Nova Clinic">
+            <h1>Nova Voice AI</h1>
+            <p>Nova Naturopathic Integrative Clinic</p>
         </div>
 
-        <div class="controls">
-            <button class="btn btn-start" id="startBtn" onclick="startConversation()">
-                Start Conversation
-            </button>
-            <button class="btn btn-end" id="endBtn" onclick="endConversation()" style="display:none">
-                End Conversation
-            </button>
-        </div>
-
-        <div class="transcript" id="transcript">
-            <div class="transcript-empty">
-                Click "Start Conversation" and allow microphone access to begin speaking with Nova.
+        <div class="main-card">
+            <div class="status-bar">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Ready to connect</span>
             </div>
+
+            <div class="voice-area">
+                <div class="voice-ring" id="voiceRing">
+                    <svg class="voice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-start" id="startBtn" onclick="startConversation()">
+                        Start Conversation
+                    </button>
+                    <button class="btn btn-end" id="endBtn" onclick="endConversation()" style="display:none">
+                        End Conversation
+                    </button>
+                </div>
+            </div>
+
+            <div class="transcript-section">
+                <div class="transcript-header" onclick="toggleTranscript()">
+                    <h3>Transcript</h3>
+                    <span class="transcript-toggle" id="transcriptToggle">Show</span>
+                </div>
+                <div class="transcript" id="transcript" style="display:none">
+                    <div class="transcript-empty">
+                        Conversation transcript will appear here.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Powered by Nova Voice AI &middot; <a href="tel:5873915753">587-391-5753</a>
         </div>
     </div>
 
     <script src="/static/app.js"></script>
+    <script>
+        // Voice ring animation
+        const origSetStatus = setStatus;
+        setStatus = function(state, text) {
+            origSetStatus(state, text);
+            const ring = document.getElementById('voiceRing');
+            if (state === 'connected') {
+                ring.classList.add('active');
+            } else {
+                ring.classList.remove('active');
+            }
+        };
+
+        // Toggle transcript
+        function toggleTranscript() {
+            const el = document.getElementById('transcript');
+            const toggle = document.getElementById('transcriptToggle');
+            if (el.style.display === 'none') {
+                el.style.display = '';
+                toggle.textContent = 'Hide';
+            } else {
+                el.style.display = 'none';
+                toggle.textContent = 'Show';
+            }
+        }
+    </script>
 </body>
 </html>
