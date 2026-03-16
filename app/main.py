@@ -329,11 +329,14 @@ async def kb_status(db: AsyncSession = Depends(get_db)):
             "FROM kb_chunks"
         ), {"v": settings.kb_version})
         r = row.one()
+        versions = await db.execute(text(
+            "SELECT kb_version, COUNT(*) as cnt FROM kb_chunks GROUP BY kb_version ORDER BY kb_version"
+        ))
         return {
             "total_chunks": r.total,
             "version_match": r.version_match,
             "kb_version_config": settings.kb_version,
-            "db_url_prefix": settings.database_url[:40] + "...",
+            "versions": {str(v.kb_version): v.cnt for v in versions.all()},
         }
     except Exception as e:
         return {"error": str(e)}
