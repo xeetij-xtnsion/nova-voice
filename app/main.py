@@ -163,10 +163,13 @@ async def create_session():
                     "model": "whisper-1",
                 },
                 "turn_detection": {
-                    "type": "server_vad",
-                    "threshold": 0.85,
-                    "prefix_padding_ms": 300,
-                    "silence_duration_ms": 1000,
+                    "type": "semantic_vad",
+                    "eagerness": "low",
+                    "create_response": True,
+                    "interrupt_response": True,
+                },
+                "input_audio_noise_reduction": {
+                    "type": "near_field",
                 },
             },
             timeout=10.0,
